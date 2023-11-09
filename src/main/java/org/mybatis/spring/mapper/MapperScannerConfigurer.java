@@ -40,6 +40,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.util.StringUtils;
 
 /**
+ * 定义需要扫描的包，将包中符合的 Mapper 接口，注册成 beanClass 为 MapperFactoryBean 的 BeanDefinition 对象，从而实现创建 Mapper 对象。
  * BeanDefinitionRegistryPostProcessor that searches recursively starting from a base package for
  * interfaces and registers them as {@code MapperFactoryBean}. Note that only interfaces with at
  * least one method will be registered; concrete classes will be ignored.
@@ -300,10 +301,12 @@ public class MapperScannerConfigurer implements BeanDefinitionRegistryPostProces
    */
   @Override
   public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) {
+    // 如果有属性占位符，则进行获得，例如 ${basePackage} 等等
     if (this.processPropertyPlaceHolders) {
       processPropertyPlaceHolders();
     }
 
+    // 创建 ClassPathMapperScanner 对象，并设置其相关属性
     ClassPathMapperScanner scanner = new ClassPathMapperScanner(registry);
     scanner.setAddToConfig(this.addToConfig);
     scanner.setAnnotationClass(this.annotationClass);
@@ -314,7 +317,9 @@ public class MapperScannerConfigurer implements BeanDefinitionRegistryPostProces
     scanner.setSqlSessionTemplateBeanName(this.sqlSessionTemplateBeanName);
     scanner.setResourceLoader(this.applicationContext);
     scanner.setBeanNameGenerator(this.nameGenerator);
+    // 注册 scanner 过滤器
     scanner.registerFilters();
+    // 执行扫描
     scanner.scan(StringUtils.tokenizeToStringArray(this.basePackage, ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
   }
 

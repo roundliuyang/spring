@@ -53,8 +53,14 @@ import org.springframework.beans.factory.FactoryBean;
  */
 public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements FactoryBean<T> {
 
+  /**
+   * Mapper接口
+   */
   private Class<T> mapperInterface;
 
+  /**
+   * 是否添加到 {@link Configuration} 中
+   */
   private boolean addToConfig = true;
 
   public MapperFactoryBean() {
@@ -70,10 +76,13 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements Factor
    */
   @Override
   protected void checkDaoConfig() {
+    // 校验 sqlSessionTemplate 非空
     super.checkDaoConfig();
 
+    // 校验 mapperInterface 非空
     notNull(this.mapperInterface, "Property 'mapperInterface' is required");
 
+    // 添加 Mapper 接口到 configuration 中
     Configuration configuration = getSqlSession().getConfiguration();
     if (this.addToConfig && !configuration.hasMapper(this.mapperInterface)) {
       try {
@@ -88,6 +97,7 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements Factor
   }
 
   /**
+   * 获得 Mapper 对象。注意，返回的是基于 Mapper 接口自动生成的代理对象
    * {@inheritDoc}
    */
   @Override
