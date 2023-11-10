@@ -23,6 +23,10 @@ import org.springframework.dao.support.PersistenceExceptionTranslator;
 import org.springframework.transaction.support.ResourceHolderSupport;
 
 /**
+ * SqlSession 持有器，用于保存当前 SqlSession 对象，保存到 org.springframework.transaction.support.TransactionSynchronizationManager 中
+ * 当存储到 TransactionSynchronizationManager 中时，使用的 KEY 为创建该 SqlSession 对象的 SqlSessionFactory 对象。
+ * 详细解析，见 SqlSessionUtils#registerSessionHolder(...) 方法。
+ *
  * Used to keep current {@code SqlSession} in {@code TransactionSynchronizationManager}.
  * The {@code SqlSessionFactory} that created that {@code SqlSession} is used as a key.
  * {@code ExecutorType} is also kept to be able to check if the user is trying to change it
@@ -33,10 +37,19 @@ import org.springframework.transaction.support.ResourceHolderSupport;
  */
 public final class SqlSessionHolder extends ResourceHolderSupport {
 
+  /**
+   * SqlSession 对象
+   */
   private final SqlSession sqlSession;
 
+  /**
+   * 执行器类型
+   */
   private final ExecutorType executorType;
 
+  /**
+   * PersistenceExceptionTranslator 对象
+   */
   private final PersistenceExceptionTranslator exceptionTranslator;
 
   /**

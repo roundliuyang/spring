@@ -30,6 +30,7 @@ import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
+ * Spring托管事务的Transaction实现类
  * {@code SpringManagedTransaction} handles the lifecycle of a JDBC connection.
  * It retrieves a connection from Spring's transaction manager and returns it back to it
  * when it is no longer needed.
@@ -46,12 +47,24 @@ public class SpringManagedTransaction implements Transaction {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SpringManagedTransaction.class);
 
+  /**
+   * DataSource 对象
+   */
   private final DataSource dataSource;
 
+  /**
+   * Connection 对象
+   */
   private Connection connection;
 
+  /**
+   * 当前连接是否处于事务中
+   */
   private boolean isConnectionTransactional;
 
+  /**
+   * 是否自动提交
+   */
   private boolean autoCommit;
 
   public SpringManagedTransaction(DataSource dataSource) {
@@ -60,6 +73,7 @@ public class SpringManagedTransaction implements Transaction {
   }
 
   /**
+   * 获得连接
    * {@inheritDoc}
    */
   @Override
@@ -79,6 +93,7 @@ public class SpringManagedTransaction implements Transaction {
    * so we need to no-op that calls.
    */
   private void openConnection() throws SQLException {
+    // 获得连接
     this.connection = DataSourceUtils.getConnection(this.dataSource);
     this.autoCommit = this.connection.getAutoCommit();
     this.isConnectionTransactional = DataSourceUtils.isConnectionTransactional(this.connection, this.dataSource);
@@ -92,6 +107,7 @@ public class SpringManagedTransaction implements Transaction {
   }
 
   /**
+   * 提交事务
    * {@inheritDoc}
    */
   @Override
@@ -103,6 +119,7 @@ public class SpringManagedTransaction implements Transaction {
   }
 
   /**
+   * 回滚事务
    * {@inheritDoc}
    */
   @Override
@@ -114,6 +131,7 @@ public class SpringManagedTransaction implements Transaction {
   }
 
   /**
+   * 释放连接
    * {@inheritDoc}
    */
   @Override

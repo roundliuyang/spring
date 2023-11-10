@@ -33,6 +33,8 @@ import org.springframework.transaction.support.TransactionSynchronizationAdapter
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
+ * SqlSession 工具类。它负责处理 MyBatis SqlSession 的生命周期。它可以从 Spring TransactionSynchronizationManager 中，
+ * 注册和获得对应的 SqlSession 对象。同时，它也支持当前不处于事务的情况下。
  * Handles MyBatis SqlSession life cycle. It can register and get SqlSessions from
  * Spring {@code TransactionSynchronizationManager}. Also works if no transaction is active.
  *
@@ -55,6 +57,7 @@ public final class SqlSessionUtils {
   }
 
   /**
+   * 获得SqlSession对象
    * Creates a new MyBatis {@code SqlSession} from the {@code SqlSessionFactory}
    * provided as a parameter and using its {@code DataSource} and {@code ExecutorType}
    *
@@ -64,7 +67,9 @@ public final class SqlSessionUtils {
    *             {@code SqlSessionFactory} is not using a {@code SpringManagedTransactionFactory}
    */
   public static SqlSession getSqlSession(SqlSessionFactory sessionFactory) {
+    // 获得执行器类型
     ExecutorType executorType = sessionFactory.getConfiguration().getDefaultExecutorType();
+    // 获得 SqlSession 对象
     return getSqlSession(sessionFactory, executorType, null);
   }
 
@@ -87,16 +92,20 @@ public final class SqlSessionUtils {
     notNull(sessionFactory, NO_SQL_SESSION_FACTORY_SPECIFIED);
     notNull(executorType, NO_EXECUTOR_TYPE_SPECIFIED);
 
+    // 获得 SqlSessionHolder 对象
     SqlSessionHolder holder = (SqlSessionHolder) TransactionSynchronizationManager.getResource(sessionFactory);
 
+    // 获得SqlSession 对象
     SqlSession session = sessionHolder(executorType, holder);
     if (session != null) {
       return session;
     }
 
     LOGGER.debug(() -> "Creating a new SqlSession");
+    // 创建 SqlSession 对象
     session = sessionFactory.openSession(executorType);
 
+    // 注册到 TransactionSynchronizationManager 中
     registerSessionHolder(sessionFactory, executorType, exceptionTranslator, session);
 
     return session;
@@ -121,14 +130,21 @@ public final class SqlSessionUtils {
     if (TransactionSynchronizationManager.isSynchronizationActive()) {
       Environment environment = sessionFactory.getConfiguration().getEnvironment();
 
+      // 如果使用Spring 事务管理器
       if (environment.getTransactionFactory() instanceof SpringManagedTransactionFactory) {
         LOGGER.debug(() -> "Registering transaction synchronization for SqlSession [" + session + "]");
 
+        // 创建 SqlSessionHolder 对象
         holder = new SqlSessionHolder(session, executorType, exceptionTranslator);
+        // 绑定到 TransactionSynchronizationManager 中
         TransactionSynchronizationManager.bindResource(sessionFactory, holder);
+        // 创建 SqlSessionSynchronization 到 TransactionSynchronizationManager 中
         TransactionSynchronizationManager.registerSynchronization(new SqlSessionSynchronization(holder, sessionFactory));
+        // 设置同步
         holder.setSynchronizedWithTransaction(true);
+        // 增加计数
         holder.requested();
+        // 如果非 Spring 事务管理器，抛出 TransientDataAccessResourceException 异常
       } else {
         if (TransactionSynchronizationManager.getResource(environment.getDataSource()) == null) {
           LOGGER.debug(() -> "SqlSession [" + session + "] was not registered for synchronization because DataSource is not transactional");
@@ -143,16 +159,22 @@ public final class SqlSessionUtils {
 
 }
 
+  /**
+   * 从SqlSessionHolder中，获得SqlSession对象
+   */
   private static SqlSession sessionHolder(ExecutorType executorType, SqlSessionHolder holder) {
     SqlSession session = null;
     if (holder != null && holder.isSynchronizedWithTransaction()) {
+      // 如果执行器类型发生了变更，抛出 TransientDataAccessResourceException 异常
       if (holder.getExecutorType() != executorType) {
         throw new TransientDataAccessResourceException("Cannot change the ExecutorType when there is an existing transaction");
       }
 
+      // 增加计数
       holder.requested();
 
       LOGGER.debug(() -> "Fetched SqlSession [" + holder.getSqlSession() + "] from current transaction");
+      // 获得SqlSession 对象
       session = holder.getSqlSession();
     }
     return session;
@@ -170,10 +192,13 @@ public final class SqlSessionUtils {
     notNull(session, NO_SQL_SESSION_SPECIFIED);
     notNull(sessionFactory, NO_SQL_SESSION_FACTORY_SPECIFIED);
 
+    // 从 TransactionSynchronizationManager 中，获得 SqlSessionHolder 对象
     SqlSessionHolder holder = (SqlSessionHolder) TransactionSynchronizationManager.getResource(sessionFactory);
+    // 如果相等，说明在 Spring 托管的事务中，则释放 holder 计数
     if ((holder != null) && (holder.getSqlSession() == session)) {
       LOGGER.debug(() -> "Releasing transactional SqlSession [" + session + "]");
       holder.released();
+    // 如果不相等，说明不在 Spring 托管的事务中，直接关闭 SqlSession 对象
     } else {
       LOGGER.debug(() -> "Closing non transactional SqlSession [" + session + "]");
       session.close();
@@ -181,6 +206,7 @@ public final class SqlSessionUtils {
   }
 
   /**
+   * 判断传入的 SqlSession 参数，是否在 Spring 事务中
    * Returns if the {@code SqlSession} passed as an argument is being managed by Spring
    *
    * @param session a MyBatis SqlSession to check
@@ -191,12 +217,15 @@ public final class SqlSessionUtils {
     notNull(session, NO_SQL_SESSION_SPECIFIED);
     notNull(sessionFactory, NO_SQL_SESSION_FACTORY_SPECIFIED);
 
+    // 从 TransactionSynchronizationManager 中，获得 SqlSessionHolder 对象
     SqlSessionHolder holder = (SqlSessionHolder) TransactionSynchronizationManager.getResource(sessionFactory);
 
+    // 如果相等，说明在 Spring 托管的事务中
     return (holder != null) && (holder.getSqlSession() == session);
   }
 
   /**
+   * SqlSession 的 同步器，基于 Spring Transaction 体系
    * Callback for cleaning up resources. It cleans TransactionSynchronizationManager and
    * also commits and closes the {@code SqlSession}.
    * It assumes that {@code Connection} life cycle will be managed by
@@ -204,10 +233,19 @@ public final class SqlSessionUtils {
    */
   private static final class SqlSessionSynchronization extends TransactionSynchronizationAdapter {
 
+    /**
+     * SqlSessionHolder 对象
+     */
     private final SqlSessionHolder holder;
 
+    /**
+     * SqlSessionFactory 对象
+     */
     private final SqlSessionFactory sessionFactory;
 
+    /**
+     * 是否开启
+     */
     private boolean holderActive = true;
 
     public SqlSessionSynchronization(SqlSessionHolder holder, SqlSessionFactory sessionFactory) {
@@ -250,6 +288,8 @@ public final class SqlSessionUtils {
     }
 
     /**
+     * 在事务提交之前，调用 SqlSession#commit() 方法，提交事务。虽然说，Spring 自身也会调用 Connection#commit() 方法，进行事务的提交。
+     * 但是，SqlSession#commit() 方法中，不仅仅有事务的提交，还有提交批量操作，刷新本地缓存等等。
      * {@inheritDoc}
      */
     @Override
@@ -263,8 +303,10 @@ public final class SqlSessionUtils {
       if (TransactionSynchronizationManager.isActualTransactionActive()) {
         try {
           LOGGER.debug(() -> "Transaction synchronization committing SqlSession [" + this.holder.getSqlSession() + "]");
+          // 提交事务
           this.holder.getSqlSession().commit();
         } catch (PersistenceException p) {
+          // 如果发生异常，则进行转换，并抛出异常
           if (this.holder.getPersistenceExceptionTranslator() != null) {
             DataAccessException translated = this.holder
                 .getPersistenceExceptionTranslator()
