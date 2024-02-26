@@ -18,6 +18,7 @@ package org.mybatis.spring.sample;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
+ * 基于 {@link org.mybatis.spring.mapper.MapperFactoryBean} 类，直接声明指定的 Mapper 接口
  * Example of MyBatis-Spring integration with a DAO created by
  * MapperFactoryBean.
  */

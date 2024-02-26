@@ -21,6 +21,7 @@ import org.springframework.context.annotation.ImportResource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
+ * 基于 @MapperScan 注解，扫描指定包
  * Test to ensure that the {@link MapperScan}
  * annotation works as expected.
  *
